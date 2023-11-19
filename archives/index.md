@@ -1,0 +1,221 @@
+# 目标
+建立一个管理自己的用户信息的服务，为其他服务提供用户信息、权限服务。
+
+# 功能
+- 这是一个用户管理系统
+- 管理员去管理各系统，为各系统管理角色，为用户分配角色。
+- 由管理员创建系统，及其操作员。操作员读取系统信息，管理该系统的用户。
+- 注册，登录
+- 提供用户信息、权限。
+
+# 接入方法
+
+其他系统使用本系统登录、注册页面。
+登录或注册成功后replace到其他系统。
+后端使用open api取得用户信息+权限。然后内部自己处理相关逻辑。
+
+```
+        client              各service               sso
+
+    输入用户信息
+    请求登录 -------------------------------------> 验证
+                                                生成2个token
+                                                返回token+expires
+    在ls中存token+expires
+    使用access_token请求 --->
+                            判断session中是否已记录用户信息
+                            |           |
+                            |Y          |N
+                            V           |
+                判断access_token是否相同  |
+                再判断是否在有效期  |N     |
+                   Y|   |N       |      V
+                    |   |--------->  使用access_token
+                    |               请求用户信息 ----> 验证是否有效
+                    |                    <---------- 返回用户信息
+                    |               保存在session中
+                    |--------|---------|
+                             |
+                             V
+                        处理逻辑
+    <-------------------返回结果
+    处理逻辑
+
+
+    前端更新token
+    当快过期时
+    使用access_token+refresh_token请求 ---------> 验证
+                                                生成新token*2
+    在ls中存token+expires <---------------------- 返回数据
+```
+
+## 前端
+1. 自己开发登录、注册页面
+2. 使用用户信息向sso请求token
+3. 在ls中保存token+expires
+4. 在之后的请求头中使用access_token
+5. 当快过期时使用2个token请求新token
+6. 在ls中保存token+expires
+
+示例代码
+```js
+
+```
+
+## 后端
+1. 在session中记录用户信息
+2. 处理逻辑
+
+示例代码
+```js
+let reqUser = (req) => {
+    return req({url, method, data}).then((response) => {
+        req.session.user = {
+            profile: response.profile,
+            promission: response.promission,
+            router: response.router,
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+        }
+        return
+    })
+}
+function (req, res, next) {
+    if (req.session.user) {
+        if (req.session.user.access_token === req.headers.authorization) {
+            next()
+        } else {
+            reqUser(req).then(() => {
+                next()
+            })
+        }
+    } else {
+        reqUser(req).then(() => {
+            next()
+        })
+    }
+    next()
+}
+// 在接口中使用此中间件
+```
+
+# 设计原理
+## 数据结构
+用户表
+users
+    name string
+    account string
+    email string
+    password string
+    password_hash string
+    systems: [
+        {
+            id number
+            roles_id number[] // 当前用户的角色
+        }
+    ]
+    permission: number[] // 权限id组成的数组
+    router: number[]
+
+系统表
+systems
+    key string
+    id number
+    name string
+    roles_id number[] // 当前系统的所有角色
+    router_id number[]
+
+角色表
+roles
+    name string
+    id number // 当前角色的id
+    system_id // 所属系统的id
+
+路由表
+routers
+    id number
+    sub_router_id number
+    key string
+    name string
+
+权限表
+permissions
+    table_id number
+    id number
+    key number 1:read 2:write 3:read+write
+    descriptioin read | write
+
+表表
+tables
+    id number
+    key string
+    name string
+
+# api
+## login
+post /login
+data: {
+    account string
+    password string
+}
+response: {
+    code: 0
+    message: '',
+    data: {
+        access_token,
+        refresh_token,
+    }
+}
+
+## logout
+delete /logout
+data: {
+    account string
+}
+response: {
+    code: 0
+    message: ''
+    data: {}
+}
+
+## authUserInfo
+post /authUserInfo
+data: {
+    accessToken string
+}
+response: {
+    code: 0
+    message: ''
+    data: {
+        profile
+        promission
+        router
+        accessToken
+        refreshToken
+    }
+}
+
+## refreshToken
+post /refreshToken
+data: {
+    accessToken
+    refreshToken
+}
+response: {
+    code: 0
+    message: ''
+    data: {
+        accessToken
+        refreshToken
+    }
+}
+
+# error code
+|错误码值|说明||
+|-|-|-|
+|100100|请求参数错误|要求字段必传|
+|100110|账号密码不匹配||
+||||
+
+# todo
+不同环境
