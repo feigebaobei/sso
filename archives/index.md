@@ -47,6 +47,13 @@
     使用access_token+refresh_token请求 ---------> 验证
                                                 生成新token*2
     在ls中存token+expires <---------------------- 返回数据
+
+
+    请求登出 -----------------------------------> 验证
+                                            在数的库中标记已经登出
+       <--------------------------------------- 返回
+    在ls中删除数据
+    处理逻辑
 ```
 
 ## 前端
@@ -104,17 +111,18 @@ function (req, res, next) {
 用户表
 users
     name string
-    account string
-    email string
+    <!-- account string -->
+    email string // 不可重复
     password string
     password_hash string
     systems: [
         {
-            id number
+            id number // 系统的id
             roles_id number[] // 当前用户的角色
         }
     ]
-    permission: number[] // 权限id组成的数组
+    <!-- permission: number[] // 权限id组成的数组 -->
+    roles: [] // 角色id
     router: number[]
 
 系统表
@@ -124,12 +132,14 @@ systems
     name string
     roles_id number[] // 当前系统的所有角色
     router_id number[]
+    env // 环境
 
 角色表
 roles
     name string
     id number // 当前角色的id
     system_id // 所属系统的id
+    permissions: [] // 权限id
 
 路由表
 routers
@@ -152,6 +162,29 @@ tables
     name string
 
 # api
+
+## sign
+post /sign
+data: {
+    account string
+    password string
+}
+response: {
+    code: 0
+    message: ''
+    data: {}
+}
+```
+    account是否存在
+        |
+        |Y
+        V
+    初始化用户profile
+    roles
+    router
+    保存在users表中
+```
+
 ## login
 post /login
 data: {
@@ -166,6 +199,13 @@ response: {
         refresh_token,
     }
 }
+```
+    查询用户
+    加密userId
+    使用加密后userId，生成access_token，指定有效时间
+    使用加密后access_token，生成refresh_token
+    返回2个token
+```
 
 ## logout
 delete /logout
@@ -177,6 +217,10 @@ response: {
     message: ''
     data: {}
 }
+```
+    验签token，得到userId.
+    在黑名单中增加一条数据（userId，expires）
+```
 
 ## authUserInfo
 post /authUserInfo
@@ -187,13 +231,22 @@ response: {
     code: 0
     message: ''
     data: {
-        profile
-        promission
-        router
+        profile: {
+            name string
+            account string
+            email string
+        }
+        promission: [{tableId, key, description}]
+        roles: [{name, id, systemId, permission: []}]
+        router: [{}]
         accessToken
-        refreshToken
     }
 }
+```
+    验签token,得到userId。
+    判断是否登出
+    返回用户信息
+```
 
 ## refreshToken
 post /refreshToken
@@ -209,8 +262,32 @@ response: {
         refreshToken
     }
 }
+```
+    验签access_token,得到userId,
+    判断是否登出
+    判断2个token是否匹配
+    返回2个新token
+```
+
+## permission
+修改权限
+post /permission
+data: {
+    userId string
+    rolesId number[]
+}
+response: {
+    code: 0
+    message: ''
+    data: {}
+}
+```
+    修改用户角色（覆盖）
+```
 
 # error code
+详见配置文件
+
 |错误码值|说明||
 |-|-|-|
 |100100|请求参数错误|要求字段必传|
@@ -219,3 +296,4 @@ response: {
 
 # todo
 不同环境
+每30min清一次黑名单
