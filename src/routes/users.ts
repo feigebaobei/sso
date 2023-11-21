@@ -99,29 +99,18 @@ router.route('/login')
 })
 .post(cors.corsWithOptions, (req, res) => {
   if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    usersDb.collection('users').findOne({account: req.body.account}).then((result) => {
+    usersDb.collection('users').findOne({email: req.body.account}).then((result) => {
       if (!result || md5(req.body.password) !== result.passwordHash) {
         return res.status(200).json({
           code: 100110,
           message: errorCode[100110],
           data: {},
         })
-      } else {
-        let accessToken = jwt.sign(result, secret, {
-          expiresIn: accessTokenExpries
-        })
-        let refreshToken = jwt.sign(accessToken, secret, {
-          expiresIn: refreshTokenExpries
-        })
+      } else { // 登录信息正确
         return res.status(200).json({
           code: 0,
           message: '',
-          data: {
-            // result,
-            accessToken,
-            refreshToken,
-            accessTokenExpries,
-          }
+          data: createToken(result.id)
         })
       }      
     })
