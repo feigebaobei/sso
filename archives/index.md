@@ -188,6 +188,7 @@ response: {
     roles
     router
     保存在users表中
+    生成2个token并返回
 ```
 
 ## login
