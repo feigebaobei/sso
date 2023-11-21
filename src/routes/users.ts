@@ -3,10 +3,11 @@ import * as express from 'express'
 import cors from './cors'
 import md5 from 'md5'
 import jwt from 'jsonwebtoken'
+import {ulid} from 'ulid'
 import { usersDb } from '../mongodb'
-import { rules, resParamsError } from '../header'
-import { errorCode } from '../header/errorCode'
-import { secret } from '../header/config'
+import { rules, resParamsError, createToken } from '../helper'
+import { errorCode } from '../helper/errorCode'
+import { accessTokenExpries, refreshTokenExpries } from '../helper/config'
 
 let clog = console.log
 
@@ -16,6 +17,73 @@ var router = express.Router();
 // router.get('/', function(req, res, next) {
 //   res.send('respond with a resource');
 // });
+
+// 注册
+// 待测试
+router.route('/sign')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.post(cors.corsWithOptions, (req, res) => {
+  if (rules.required(req.body.account) && rules.required(req.body.password)) {
+    usersDb.collection('users').findOne({account: req.body.account}).then((result) => {
+      if (!result) {
+        let _ulid = ulid()
+        usersDb.collection('users').insertOne({
+          profile: {
+            id: _ulid,
+            email: req.body.account,
+            passwordHash: md5(req.body.password),
+          },
+          systems: [],
+          roles: [],
+          router: [],
+        }).then(() => {
+          return res.status(200).json({
+            code: 0,
+            message: errorCode[0],
+            data: createToken(_ulid)
+          })
+        }).catch(() => {
+          return res.status(200).json({
+            code: 200000,
+            message: errorCode[200000],
+            data: {}
+          })
+        })
+      } else {
+        return res.status(200).json({
+          code: 100120,
+          message: errorCode[100120],
+          data: {}
+        })
+      }      
+    })
+  } else {
+    resParamsError(res)  
+  }
+})
+.put(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
 
 // 登录
 router.route('/login')
@@ -31,7 +99,6 @@ router.route('/login')
 })
 .post(cors.corsWithOptions, (req, res) => {
   if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    clog(req.body)
     usersDb.collection('users').findOne({account: req.body.account}).then((result) => {
       if (!result || md5(req.body.password) !== result.passwordHash) {
         return res.status(200).json({
@@ -40,18 +107,67 @@ router.route('/login')
           data: {},
         })
       } else {
-        let accessToken = jwt.sign(result, secret)
-        let refreshToken = jwt.sign(accessToken, secret)
+        let accessToken = jwt.sign(result, secret, {
+          expiresIn: accessTokenExpries
+        })
+        let refreshToken = jwt.sign(accessToken, secret, {
+          expiresIn: refreshTokenExpries
+        })
         return res.status(200).json({
           code: 0,
           message: '',
           data: {
-            result,
+            // result,
             accessToken,
             refreshToken,
+            accessTokenExpries,
           }
         })
       }      
+    })
+  } else {
+    resParamsError(res)  
+  }
+})
+.put(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+
+// 验证用户
+router.route('/authUserInfo')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.post(cors.corsWithOptions, (req, res) => {
+  if (rules.required(req.body.accessToken)) {
+    let profile = jwt.verify(req.body.accessToken, secret)
+    return res.status(200).json({
+      code: 0,
+      message: '',
+      data: {
+        profile,
+        promission,
+        router,
+        accessToken,
+      }
     })
   } else {
     resParamsError(res)  

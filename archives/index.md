@@ -112,7 +112,8 @@ function (req, res, next) {
 users
     name string
     <!-- account string -->
-    email string // 不可重复
+    email string
+    id ULID
     password string
     password_hash string
     systems: [
