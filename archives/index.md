@@ -142,7 +142,7 @@ roles
     permissions: [] // 权限id
 
 路由表
-routers
+routes
     id number
     sub_router_id number
     key string
@@ -160,6 +160,11 @@ tables
     id number
     key string
     name string
+
+黑名单
+black_list
+    userId
+    expires
 
 # api
 
