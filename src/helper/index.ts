@@ -128,23 +128,6 @@ let verifyAccessToken: (p: S) => Promise<TokenMtObj> = (accessToken: S) => {
     //     }
     // })
 }
-// let verifyAccessToken = (accessToken: S) => new Promise((s, j) => {
-//     jwt.verify(accessToken, accessSecret, (err, decoded) => {
-//         if (err) {
-//             j(err)
-//         } else {
-//             s(decoded)
-//         }
-//     })
-// })
-// .then((ct: S) => {
-//     let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
-//     let o = JSON.parse(mt)
-//     return {
-//         userId: o.userId,
-//         expires: o.expires,
-//     }
-// } as (p: S) => Promise<{userId: S, expires: N}>)
 // 待测试
 let verifyRefreshToken = (refreshToken: S) => {
     let ct = jwt.verify(refreshToken, refreshSecret) as string
@@ -155,6 +138,12 @@ let verifyRefreshToken = (refreshToken: S) => {
         expires: o.expires,
     }
 }
+// 2个token是否匹配
+let isMatchedToken = (accessToken: S, refreshToken: S) => {
+    return Promise.all([verifyAccessToken(accessToken), verifyRefreshToken(refreshToken)]).then(([r1, r2]) => {
+        return r1.userId === r2.userId
+    })
+}
 
 export {
     // required,
@@ -164,4 +153,5 @@ export {
     createToken,
     verifyAccessToken,
     verifyRefreshToken,
+    isMatchedToken,
 }

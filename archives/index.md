@@ -261,7 +261,7 @@ response: {
 ```
 
 ## refreshToken
-post /refreshToken
+put /refreshToken
 data: {
     accessToken
     refreshToken
@@ -283,7 +283,7 @@ response: {
 
 ## permission
 修改权限
-post /permission
+put /permission
 data: {
     userId string
     rolesId number[]

@@ -5,7 +5,8 @@ import md5 from 'md5'
 import jwt from 'jsonwebtoken'
 import {ulid} from 'ulid'
 import { usersDb } from '../mongodb'
-import { rules, resParamsError, createToken, verifyAccessToken } from '../helper'
+import { rules, resParamsError, createToken, verifyAccessToken,
+  isMatchedToken, } from '../helper'
 import { errorCode } from '../helper/errorCode'
 // import { accessTokenExpries, refreshTokenExpries } from '../helper/config'
 import type { UserDocument, A } from '../types'
@@ -45,8 +46,6 @@ router.route('/sign')
             passwordHash: md5(req.body.password),
           },
           systems: [],
-          roles: [],
-          router: [],
         }).then(() => {
           return res.status(200).json({
             code: 0,
@@ -110,10 +109,18 @@ router.route('/login')
           data: {},
         })
       } else { // 登录信息正确
-        return res.status(200).json({
-          code: 0,
-          message: '',
-          data: createToken(result.id)
+        usersDb.collection('black_list').deleteOne({userId: result.profile.id}).then(() => {
+          return res.status(200).json({
+            code: 0,
+            message: '',
+            data: createToken(result.id)
+          })
+        }).catch(() => {
+          return res.status(200).json({
+            code: 200030,
+            message: errorCode[200030],
+            data: {}
+          })
         })
       }      
     })
@@ -137,6 +144,7 @@ router.route('/login')
 })
 
 // 验证用户
+// 待测试
 router.route('/authUserInfo')
 .options(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
@@ -216,6 +224,7 @@ router.route('/authUserInfo')
 })
 
 // 登出
+// 待测试
 router.route('/logout')
 .options(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
@@ -259,5 +268,67 @@ router.route('/logout')
   }
 })
 
-// module.exports = router;
+// 刷新token
+// 待测试
+router.route('/refreshToken')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.post(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.put(cors.corsWithOptions, (req, res) => {
+  if (rules.required(req.body.accessToken) && rules.required(req.body.refreshToken)) {
+    let userId = ''
+    verifyAccessToken(req.body.accessToken).then(({userId:_u, expires}) => {
+      userId = _u
+      return usersDb.collection('black_list').findOne({userId})
+    }).then((record) => {
+      if (record) { // 有记录
+        return res.status(200).json({
+          code: 100130,
+          message: errorCode[100130],
+          data: {}
+        })
+      } else { // 无记录
+        isMatchedToken(req.body.accessToken, req.body.refreshToken).then((b) => {
+          if (b) {
+            return res.status(200).json({
+              code: 0,
+              message: '',
+              data: createToken(userId)
+            })
+          } else {
+            return res.status(200).json({
+              code: 100114,
+              message: errorCode[100114],
+              data: {}
+            })
+          }
+        })
+      }
+    })
+  } else {
+    resParamsError(res)
+  }
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+
 export default router
