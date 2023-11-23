@@ -112,18 +112,20 @@ function (req, res, next) {
 users
     name string
     <!-- account string -->
-    email string // 不可重复
+    email string
+    id ULID
     password string
     password_hash string
     systems: [
         {
             id number // 系统的id
-            roles_id number[] // 当前用户的角色
+            role_list number[] // 当前用户的角色Id
+            route_list number[] // 当前用户的路由Id
         }
     ]
     <!-- permission: number[] // 权限id组成的数组 -->
-    roles: [] // 角色id
-    router: number[]
+    <!-- roles: [] // 角色id -->
+    <!-- router: number[] -->
 
 系统表
 systems
@@ -144,7 +146,7 @@ roles
 路由表
 routes
     id number
-    sub_router_id number
+    sub_router_id number // 子路由id
     key string
     name string
 
@@ -215,6 +217,9 @@ response: {
 
 ## logout
 delete /logout
+header: {
+    authentication: accessToken
+}
 data: {
     account string
 }
@@ -232,6 +237,7 @@ response: {
 post /authUserInfo
 data: {
     accessToken string
+    systemId number // 系统的id
 }
 response: {
     code: 0
@@ -255,7 +261,7 @@ response: {
 ```
 
 ## refreshToken
-post /refreshToken
+put /refreshToken
 data: {
     accessToken
     refreshToken
@@ -277,7 +283,7 @@ response: {
 
 ## permission
 修改权限
-post /permission
+put /permission
 data: {
     userId string
     rolesId number[]
