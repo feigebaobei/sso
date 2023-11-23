@@ -1,14 +1,15 @@
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import { accessSecret, 
-    refreshSecret, accessTokenExpries, refreshTokenExpries,
-    // cryptoSecretString,
+    refreshSecret, 
+    accessTokenDuration, 
+    // refreshTokenExpries,
+    refreshTokenDuration,
     cryptoSecretBuffer,
-    // ivString,
     ivBuffer,
  } from '../helper/config'
 import type { Response } from 'express'
-import type { S, ULID } from '../types'
+import type { S, N, ULID } from '../types'
 import type { Buffer } from 'buffer'
 
 let rules = {
@@ -55,6 +56,12 @@ let resParamsError = (res: Response) => {
 // let cryptoFn = (mt) => {
 //     return mt
 // }
+let accessTokenExpries = () => {
+    return new Date().getTime() + accessTokenDuration
+}
+let refreshTokenExpries = () => {
+    return new Date().getTime() + refreshTokenDuration
+}
 let encode = (src: S, key: Buffer, iv: Buffer) => {
     let sign = "";
     const cipher = crypto.createCipheriv("aes-128-cbc", key, iv); // createCipher在10.0.0已被废弃
@@ -70,26 +77,73 @@ let decode = (sign: S, key: Buffer, iv: Buffer) => {
     return src;
 }
 let createToken = (userId: ULID) => {
-    let ct = encode(JSON.stringify({userId, expires: accessTokenExpries}), cryptoSecretBuffer, ivBuffer)
+    let ct = encode(JSON.stringify({userId, expires: accessTokenExpries()}), cryptoSecretBuffer, ivBuffer)
     let accessToken = jwt.sign(ct, accessSecret)
-    ct = encode(JSON.stringify({userId, expires: refreshTokenExpries}), cryptoSecretBuffer, ivBuffer)
+    ct = encode(JSON.stringify({userId, expires: refreshTokenExpries()}), cryptoSecretBuffer, ivBuffer)
     let refreshToken = jwt.sign(ct, refreshSecret)
     return {
         accessToken,
         refreshToken,
     }
 }
+interface TokenMtObj {userId: ULID, expires: N}
 // 待测试
-let verifyAccessToken = (accessToken: S) => {
-    let ct = jwt.verify(accessToken, accessSecret) as string
-    // if (JwtPayload) {} else {}
-    let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
-    let o = JSON.parse(mt)
-    return {
-        userId: o.userId,
-        expires: o.expires,
-    }
+let verifyAccessToken: (p: S) => Promise<TokenMtObj> = (accessToken: S) => {
+    return (new Promise((s, j) => {
+        jwt.verify(accessToken, accessSecret, (err, decoded) => {
+            if (err) {
+                j(err)
+            } else {
+                s((decoded as S))
+            }
+        })
+    }) as Promise<S>).then((ct: S) => {
+        let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
+        let o = JSON.parse(mt)
+        return {
+            userId: o.userId,
+            expires: o.expires,
+        }
+    // }).catch(err => {
+    })
+    // 与下面的写法等效
+    // let p: Promise<S> = new Promise((s, j) => {
+    //     jwt.verify(accessToken, accessSecret, (err, decoded) => {
+    //         if (err) {
+    //             j(err)
+    //         } else {
+    //             s((decoded as S))
+    //         }
+    //     })
+    // })
+    // return p.then((ct: S) => {
+    //     // decode()
+    //     let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
+        
+    //     let o = JSON.parse(mt)
+    //     return {
+    //         userId: o.userId,
+    //         expires: o.expires,
+    //     }
+    // })
 }
+// let verifyAccessToken = (accessToken: S) => new Promise((s, j) => {
+//     jwt.verify(accessToken, accessSecret, (err, decoded) => {
+//         if (err) {
+//             j(err)
+//         } else {
+//             s(decoded)
+//         }
+//     })
+// })
+// .then((ct: S) => {
+//     let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
+//     let o = JSON.parse(mt)
+//     return {
+//         userId: o.userId,
+//         expires: o.expires,
+//     }
+// } as (p: S) => Promise<{userId: S, expires: N}>)
 // 待测试
 let verifyRefreshToken = (refreshToken: S) => {
     let ct = jwt.verify(refreshToken, refreshSecret) as string
