@@ -88,6 +88,7 @@ let createToken = (userId: ULID) => {
 }
 interface TokenMtObj {userId: ULID, expires: N}
 // 待测试
+// 返回验签的数据
 let verifyAccessToken: (p: S) => Promise<TokenMtObj> = (accessToken: S) => {
     return (new Promise((s, j) => {
         jwt.verify(accessToken, accessSecret, (err, decoded) => {

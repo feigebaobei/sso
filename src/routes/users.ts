@@ -150,11 +150,8 @@ router.route('/authUserInfo')
 })
 .post(cors.corsWithOptions, (req, res) => {
   if (rules.required(req.body.accessToken) && rules.required(req.body.systemId)) {
-    // let {userId, expires} = 
     verifyAccessToken(req.body.accessSecret).then(({userId, expires}) => {
       // 若能解码，则说明未过期
-      // let now = new Date().getTime()
-      // if (expires )
       return usersDb.collection('users').findOne({id: userId}).then(result => {
         if (result) {
           return result
@@ -162,24 +159,7 @@ router.route('/authUserInfo')
           return Promise.reject()
         }
       })
-      // .then(result => {
-      //   return res.status(200).json({
-      //     code: 0,
-      //     message: '',
-      //     data: {
-      //       profile: {
-      //         email: result.email,
-      //       },
-      //       promission,
-      //       roles: 
-      //       router,
-      //       // accessToken,
-      //     }
-      //   })
-      // })
     }).then((user) => {
-      // let p1 = usersDb.collection('systems').find({id: user.systems.map((item: A) => item.id)})
-      // let p2 = usersDb.collection('routes').find({id: user.systems.map((item: A) => item.)})
       let system = user.systems.find((item: A) => item.id === req.body.systemId)
       if (system) {
         let p1 = usersDb.collection('routes').find({id: system.role_list}) // 取得路由信息
@@ -233,6 +213,50 @@ router.route('/authUserInfo')
     message: '',
     data: {}
   })
+})
+
+// 登出
+router.route('/logout')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.post(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.put(cors.corsWithOptions, (req, res) => {
+  return res.status(200).json({
+    code: 0,
+    message: '',
+    data: {}
+  })
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  if (rules.required(req.headers.authorization) && rules.required(req.body.account)) {
+    verifyAccessToken(req.headers.authorization || '')
+    .then(({userId, expires}) => {
+      return usersDb.collection('black_list').insertOne({userId, expires})
+    })
+    .then(() => {
+      return res.status(200).json({
+        code: 0,
+        message: '',
+        data: {}
+      })
+    })
+  } else {
+    resParamsError(res)
+  }
 })
 
 // module.exports = router;

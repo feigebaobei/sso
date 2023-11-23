@@ -217,6 +217,9 @@ response: {
 
 ## logout
 delete /logout
+header: {
+    authentication: accessToken
+}
 data: {
     account string
 }
