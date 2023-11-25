@@ -97,27 +97,13 @@ router.route('/login')
           data: {},
         })
       } else { // 登录信息正确
-        usersDb.collection('black_list').deleteOne({userId: result.id})
+        usersDb.collection('black_list').deleteMany({userId: result.id})
         // clog('login', result)
         return res.status(200).json({
           code: 0,
           message: '',
           data: createToken(result.id)
         })
-        // .then(() => {
-        //   return res.status(200).json({
-        //     code: 0,
-        //     message: '',
-        //     data: createToken(result.id)
-        //   })
-        // })
-        // .catch(() => {
-        //   return res.status(200).json({
-        //     code: 200030,
-        //     message: errorCode[200030],
-        //     data: {}
-        //   })
-        // })
       }      
     })
   } else {
@@ -283,65 +269,52 @@ router.route('/logout')
   })
 })
 .delete(cors.corsWithOptions, (req, res) => {
-  // clog('sdfs', req.headers, req.headers.authorization, req.headers.refreshtoken)
-  // express框架的header字段都是小写
-  if (rules.required(req.headers.authorization) && rules.required(req.headers.refreshtoken)) {
-    // clog('req', req.headers.authorization, req.headers.refreshtoken)
-    if (!Array.isArray(req.headers.authorization) && !Array.isArray(req.headers.refreshtoken)) {
-      // 2 token是否有效  能被解析
-      // userId一致
-      // black_list中不存在
-      // 
-      let p1 = verifyAccessToken((req.headers.authorization as S) || '')
-      let p2 = verifyAccessToken((req.headers.refreshtoken as S) || '')
-      Promise.all([p1, p2]).then(([r1, r2]) => {
-        clog(r1, r2)
-        if (r1.userId === r2.userId) {
-          usersDb.collection('black_list').findOne({userId: r1.userId}).then((result) => {
-            if (result) {
-              return res.status(200).json({
-                code: 100130,
-                message: errorCode[100130],
-                data: {}
-              })
-            } else {
-              usersDb.collection('black_list').insertOne({userId: r1.userId, expires: new Date().getTime()}).then(() => {
-                return res.status(200).json({
-                  code: 0,
-                  message: '',
-                  data: {}
-                })
-              })
-            }
-          })
-        } else {
-          return res.status(200).json({
-            code: 100110,
-            message: errorCode[100110],
-            data: {}
-          })
-        }
-      }).catch((error) => {
+  // 校验参数
+  // 2 token是否有效  能被解析
+  // userId是否一致
+  // 写入black_list
+  new Promise((s, j) => {
+    if (rules.required(req.headers.authorization) && rules.required(req.headers.refreshtoken)) {
+      if (!Array.isArray(req.headers.authorization) && !Array.isArray(req.headers.refreshtoken)) {
+        s(true)
+      } else {
+        j(100150)
+      }
+    } else {
+      j(100100)
+    }
+  }).then(() => {
+    let p1 = verifyAccessToken((req.headers.authorization as S) || '')
+    let p2 = verifyAccessToken((req.headers.refreshtoken as S) || '')
+    return Promise.all([p1, p2]).then(([r1, r2]) => {
+      return [r1, r2]
+    }).catch(() => {
+      return Promise.reject(100140)
+    })
+  }).then(([r1, r2]) => {
+    if (r1.userId === r2.userId) {
+      return usersDb.collection('black_list').insertOne({userId: r1.userId, expires: new Date().getTime()}).then(() => {
         return res.status(200).json({
-          code: 100140,
-          message: errorCode[100140],
+          code: 0,
+          message: '',
           data: {}
         })
+      }).catch(() => {
+        return Promise.reject(200000)
       })
     } else {
-      return res.status(200).json({
-        code: 100100,
-        message: errorCode[100100],
-        data: {}
-      })
+      return Promise.reject(100110)
     }
-  } else {
-    resParamsError(res)
-  }
+  }).catch((code) => {
+    return res.status(200).json({
+      code,
+      message: errorCode[code],
+      data: {}
+    })
+  })
 })
 
 // 刷新token
-// 待测试
 router.route('/refreshtoken')
 .options(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
@@ -361,39 +334,67 @@ router.route('/refreshtoken')
   })
 })
 .put(cors.corsWithOptions, (req, res) => {
-  if (rules.required(req.body.accessToken) && rules.required(req.body.refreshtoken)) {
-    let userId = ''
-    verifyAccessToken(req.body.accessToken).then(({userId:_u, expires}) => {
-      userId = _u
-      return usersDb.collection('black_list').findOne({userId})
-    }).then((record) => {
-      if (record) { // 有记录
-        return res.status(200).json({
-          code: 100130,
-          message: errorCode[100130],
-          data: {}
-        })
-      } else { // 无记录
-        isMatchedToken(req.body.accessToken, req.body.refreshtoken).then((b) => {
-          if (b) {
-            return res.status(200).json({
-              code: 0,
-              message: '',
-              data: createToken(userId)
-            })
-          } else {
-            return res.status(200).json({
-              code: 100114,
-              message: errorCode[100114],
-              data: {}
-            })
-          }
-        })
+  // 校验参数
+  // token是否一致，是否可刷新
+  // 是否登出
+  // 返回刷新token
+  let userId = ''
+  new Promise((s, j) => {
+    if (rules.required(req.headers.accesstoken) && rules.required(req.headers.refreshtoken)) {
+      if (!Array.isArray(req.headers.accesstoken) && !Array.isArray(req.headers.refreshtoken)) {
+        s(true)
+      } else {
+        j(100150)
       }
+    } else {
+      j(100140)
+    }
+  }).then(() => {
+    let p1 = verifyAccessToken(req.headers.accesstoken as S)
+    let p2 = verifyAccessToken(req.headers.refreshtoken as S)
+    return Promise.all([p1, p2]).then(([r1, r2]) => {
+      if (r1.userId === r2.userId) {
+        if (new Date().getTime() < r2.expires) {
+          userId = r1.userId
+          return true
+        } else {
+          return Promise.reject(100154)
+        }
+      } else {
+        return Promise.reject(100110)
+      }
+    }).catch(() => {
+      return Promise.reject(100140)
     })
-  } else {
-    resParamsError(res)
-  }
+  }).then(() => {
+    // 是否登出
+    return usersDb.collection('black_list').findOne({userId})
+    .then((record) => {
+      return record
+    }).catch(() => {
+      return Promise.reject(200010)
+    })
+  }).then((record) => {
+    clog('seur', record)
+    if (record) {
+      return Promise.reject(100130)
+    } else {
+      return true
+    }
+  }).then(() => {
+    // clog('suerdi', )
+    return res.status(200).json({
+      code: 0,
+      message: '',
+      data: createToken(userId)
+    })
+  }).catch(code => {
+    return res.status(200).json({
+      code,
+      message: errorCode[code],
+      data: {}
+    })
+  })
 })
 .delete(cors.corsWithOptions, (req, res) => {
   return res.status(200).json({
