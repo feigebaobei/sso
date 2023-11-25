@@ -11,6 +11,10 @@ import { accessSecret,
 import type { Response } from 'express'
 import type { S, N, ULID } from '../types'
 import type { Buffer } from 'buffer'
+import type { JwtPayload } from 'jsonwebtoken'
+interface TokenMtObj {userId: ULID, expires: N}
+
+let clog = console.log
 
 let rules = {
     required: (params: any) => {
@@ -33,19 +37,6 @@ let rules = {
         return typeof n === 'number' && isFinite(n);
     }
 }
-// let wrapCheck = (condition, res) => {
-//     return new Promise((s, j) => {
-//         if (condition) {
-//             s()
-//         } else {
-//             return res.status(200).json({
-//                 code: 100100,
-//                 message: "请求参数错误",
-//                 data: {},
-//               })
-//         }
-//     })
-// }
 let resParamsError = (res: Response) => {
     return res.status(200).json({
         code: 100100,
@@ -53,9 +44,6 @@ let resParamsError = (res: Response) => {
         data: {},
       })
 }
-// let cryptoFn = (mt) => {
-//     return mt
-// }
 let accessTokenExpries = () => {
     return new Date().getTime() + accessTokenDuration
 }
@@ -77,36 +65,69 @@ let decode = (sign: S, key: Buffer, iv: Buffer) => {
     return src;
 }
 let createToken = (userId: ULID) => {
-    let ct = encode(JSON.stringify({userId, expires: accessTokenExpries()}), cryptoSecretBuffer, ivBuffer)
-    let accessToken = jwt.sign(ct, accessSecret)
-    ct = encode(JSON.stringify({userId, expires: refreshTokenExpries()}), cryptoSecretBuffer, ivBuffer)
-    let refreshToken = jwt.sign(ct, refreshSecret)
+    // 先签名再加密
+    clog('createToken', userId)
+    let expires = accessTokenExpries()
+    let mtAccessToken = jwt.sign({
+        userId,
+        expires,
+    }, accessSecret, {
+        expiresIn: accessTokenDuration
+    })
+    let accessToken = encode(mtAccessToken, cryptoSecretBuffer, ivBuffer)
+    let mtRefreshToken = jwt.sign({
+        userId,
+        expires: refreshTokenExpries()
+    }, refreshSecret, {
+        expiresIn: refreshTokenDuration
+    })
+    let refreshToken = encode(mtRefreshToken, cryptoSecretBuffer, ivBuffer)
     return {
         accessToken,
         refreshToken,
     }
 }
-interface TokenMtObj {userId: ULID, expires: N}
+
 // 待测试
 // 返回验签的数据
-let verifyAccessToken: (p: S) => Promise<TokenMtObj> = (accessToken: S) => {
+let verifyAccessToken: (p: S) => Promise<JwtPayload> = (accessToken: S) => {
+    // 先解密，再验签
+    // clog('accessToken', accessToken)
     return (new Promise((s, j) => {
-        jwt.verify(accessToken, accessSecret, (err, decoded) => {
+        let mt = decode(accessToken, cryptoSecretBuffer, ivBuffer)
+        jwt.verify(mt, accessSecret, (err, decoded) => {
+            // clog('verifyAccessToken', err, decoded)
             if (err) {
                 j(err)
             } else {
-                s((decoded as S))
+                s(decoded as JwtPayload)
+                // decoded: {
+                //     userId: '01HG2CA5QQDR7MCVMQAZPZZHC7',
+                //     expires: 1700888883508,
+                //     iat: 1700887083,
+                //     exp: 1702687083
+                // }
             }
         })
-    }) as Promise<S>).then((ct: S) => {
-        let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
-        let o = JSON.parse(mt)
-        return {
-            userId: o.userId,
-            expires: o.expires,
-        }
-    // }).catch(err => {
-    })
+    }))
+
+// }) as Promise<{userId: S, expires: N}>)
+    // return (new Promise((s, j) => {
+    //     jwt.verify(accessToken, accessSecret, (err, decoded) => {
+    //         if (err) {
+    //             j(err)
+    //         } else {
+    //             s((decoded as S))
+    //         }
+    //     })
+    // }) as Promise<S>).then((ct: S) => {
+    //     let mt = decode(ct, cryptoSecretBuffer, ivBuffer)
+    //     let o = JSON.parse(mt)
+    //     return {
+    //         userId: o.userId,
+    //         expires: o.expires,
+    //     }
+    // })
     // 与下面的写法等效
     // let p: Promise<S> = new Promise((s, j) => {
     //     jwt.verify(accessToken, accessSecret, (err, decoded) => {

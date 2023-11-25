@@ -1173,6 +1173,11 @@ right-align@^0.1.1:
   dependencies:
     align-text "^0.1.1"
 
+rotating-file-stream@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.npmjs.org/rotating-file-stream/-/rotating-file-stream-3.1.1.tgz#1c126ab2d34ab19c703909922182468b66d6b893"
+  integrity sha512-PNF1iDkxcZG+T87uUzLlcO4aquTCyY8yl+Q/OTK4dMwhwWDYWU4ZATYeIXHmYVGIzqZ2MrpY4WIkYc9Bsc3Nzw==
+
 rxjs@^7.8.1:
   version "7.8.1"
   resolved "https://registry.npmjs.org/rxjs/-/rxjs-7.8.1.tgz#6f6f3d99ea8044291efd92e7c7fcf562c4057543"
