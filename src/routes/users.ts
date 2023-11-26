@@ -5,6 +5,7 @@ import {ulid} from 'ulid'
 import { usersDb } from '../mongodb'
 import { rules, resParamsError, createToken, verifyAccessToken,
   isMatchedToken, } from '../helper'
+import { deletedDuration} from '../helper/config'
 import { errorCode } from '../helper/errorCode'
 import type { UserDocument, A, S, N } from '../types'
 
@@ -293,7 +294,11 @@ router.route('/logout')
     })
   }).then(([r1, r2]) => {
     if (r1.userId === r2.userId) {
-      return usersDb.collection('black_list').insertOne({userId: r1.userId, expires: new Date().getTime()}).then(() => {
+      let now = new Date().getTime()
+      let expires = now + deletedDuration
+      return usersDb.collection('black_list').insertOne({userId: r1.userId, 
+        now,
+        expires}).then(() => {
         return res.status(200).json({
           code: 0,
           message: '',

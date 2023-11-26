@@ -1,8 +1,3 @@
-// var createError = require('http-errors');
-// var express = require('express');
-// var path = require('path');
-// var cookieParser = require('cookie-parser');
-// var logger = require('morgan');
 import * as createError from 'http-errors'
 import * as express from 'express'
 import * as path from 'path'
@@ -11,16 +6,16 @@ import * as logger from 'morgan'
 // import fs from 'fs'
 // import * as fs from 'node:fs';
 // import * as rfs from 'rotating-file-stream'
-
+import scheduler from './schedule'
+// type/interface
 import type { Request, Response, Express, NextFunction } from "express";
 
-// var indexRouter = require('./routes/index');
-// var usersRouter = require('./routes/users');
 import indexRouter from './routes/index';
 import usersRouter from './routes/users';
 
 var app: Express = express.default();
 
+scheduler()
 // view engine setup
 app.set('views', path.join(__dirname, '../views'));
 app.set('view engine', 'jade');
