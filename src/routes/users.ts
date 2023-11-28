@@ -145,11 +145,11 @@ router.route('/authUserInfo')
   // 是否已经登出
   // 查询相关表中的数据
   new Promise((s, j) => {
-    // return 
     if (rules.required(req.body.accessToken) && rules.required(req.body.systemId)) {
-      // return true
+      clog('seccess')
       s(true)
     } else {
+      clog('feld', req.body)
       j(Promise.reject(100100))
     }
   }).then(() => {
@@ -202,6 +202,7 @@ router.route('/authUserInfo')
         return usersDb.collection('permissions').find({id: {$in: permissionIds}}).toArray()
       })
       return Promise.all([p1, p2]).then(([r1, r2]) => {
+        clog('sdfsfsdf', user, r1, r2)
         return res.status(200).json({
           code: 0,
           message: '',
@@ -255,7 +256,7 @@ router.route('/logout')
     data: {}
   })
 })
-.post(cors.corsWithOptions, (req, res) => {
+.delete(cors.corsWithOptions, (req, res) => {
   return res.status(200).json({
     code: 0,
     message: '',
@@ -269,7 +270,7 @@ router.route('/logout')
     data: {}
   })
 })
-.delete(cors.corsWithOptions, (req, res) => {
+.post(cors.corsWithOptions, (req, res) => {
   // 校验参数
   // 2 token是否有效  能被解析
   // userId是否一致

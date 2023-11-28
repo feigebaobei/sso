@@ -66,7 +66,6 @@ let decode = (sign: S, key: Buffer, iv: Buffer) => {
 }
 let createToken = (userId: ULID) => {
     // 先签名再加密
-    clog('createToken', userId)
     let expires = accessTokenExpries()
     let mtAccessToken = jwt.sign({
         userId,
