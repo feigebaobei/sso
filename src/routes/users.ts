@@ -26,8 +26,8 @@ router.route('/sign')
 })
 .post(cors.corsWithOptions, (req, res) => {
   if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((result) => {
-      if (!result) {
+    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((user) => {
+      if (!user) {
         let _ulid = ulid()
         usersDb.collection('users').insertOne({
           id: _ulid,
@@ -37,10 +37,21 @@ router.route('/sign')
           },
           systems: [],
         }).then(() => {
+          let tokenObj = createToken(_ulid)
           return res.status(200).json({
             code: 0,
             message: errorCode[0],
-            data: createToken(_ulid)
+            data: {
+              accessToken: tokenObj.accessToken,
+              refreshToken: tokenObj.refreshToken,
+              id: _ulid,
+              profile: {
+                email: req.body.account,
+              },
+              systems: [],
+              roles: [],
+              routes: [],
+            }
           })
         }).catch((error) => {
           return res.status(200).json({
@@ -90,20 +101,31 @@ router.route('/login')
 })
 .post(cors.corsWithOptions, (req, res) => {
   if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((result) => {
-      if (!result || md5(req.body.password) !== result.profile.passwordHash) {
+    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((user) => {
+      if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return res.status(200).json({
           code: 100110,
           message: errorCode[100110],
           data: {},
         })
       } else { // 登录信息正确
-        usersDb.collection('black_list').deleteMany({userId: result.id})
-        // clog('login', result)
+        usersDb.collection('black_list').deleteMany({userId: user.id})
+        // clog('login', user)
+        let tokenObj = createToken(user.id)
         return res.status(200).json({
           code: 0,
           message: '',
-          data: createToken(result.id)
+          data: {
+            accessToken: tokenObj.accessToken,
+            refreshToken: tokenObj.refreshToken,
+            id: user.id,
+            profile: {
+              email: user.profile.email,
+            },
+            system: [user.system.find((item: A) => item.id === req.body.systemId)],
+            roles: [],
+            routes: [],
+          }
         })
       }      
     })
@@ -146,10 +168,8 @@ router.route('/authUserInfo')
   // 查询相关表中的数据
   new Promise((s, j) => {
     if (rules.required(req.body.accessToken) && rules.required(req.body.systemId)) {
-      clog('seccess')
       s(true)
     } else {
-      clog('feld', req.body)
       j(Promise.reject(100100))
     }
   }).then(() => {
@@ -202,7 +222,6 @@ router.route('/authUserInfo')
         return usersDb.collection('permissions').find({id: {$in: permissionIds}}).toArray()
       })
       return Promise.all([p1, p2]).then(([r1, r2]) => {
-        clog('sdfsfsdf', user, r1, r2)
         return res.status(200).json({
           code: 0,
           message: '',
