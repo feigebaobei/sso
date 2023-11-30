@@ -100,38 +100,51 @@ router.route('/login')
   })
 })
 .post(cors.corsWithOptions, (req, res) => {
-  if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((user) => {
+  // 校验参数
+  // 取不出user
+  // 删除黑名单中的数据
+  // 返回用户信息+token
+  new Promise((s, j) => {
+    if (rules.required(req.body.account) && rules.required(req.body.password)) {
+      s(true)
+    } else {
+      j(100100)
+    }
+  }).then(() => {
+    usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
-        return res.status(200).json({
-          code: 100110,
-          message: errorCode[100110],
-          data: {},
-        })
-      } else { // 登录信息正确
-        usersDb.collection('black_list').deleteMany({userId: user.id})
-        // clog('login', user)
-        let tokenObj = createToken(user.id)
-        return res.status(200).json({
-          code: 0,
-          message: '',
-          data: {
-            accessToken: tokenObj.accessToken,
-            refreshToken: tokenObj.refreshToken,
-            id: user.id,
-            profile: {
-              email: user.profile.email,
-            },
-            system: [user.system.find((item: A) => item.id === req.body.systemId)],
-            roles: [],
-            routes: [],
-          }
-        })
-      }      
+        return Promise.reject(100110)
+      } else {
+        return user
+      }
+    }).catch(() => {
+      return Promise.reject(200010)
     })
-  } else {
-    resParamsError(res)  
-  }
+  }).then((user: A) => {
+    usersDb.collection('black_list').deleteMany({userId: user.id})
+    let tokenObj = createToken(user.id)
+    return res.status(200).json({
+      code: 0,
+      message: '',
+      data: {
+        accessToken: tokenObj.accessToken,
+        refreshToken: tokenObj.refreshToken,
+        id: user.id,
+        profile: {
+          email: user.profile.email,
+        },
+        systems: [user.systems.find((item: A) => item.id === req.body.systemId)],
+        roles: [],
+        routes: [],
+      }
+    })
+  }).catch((code) => {
+    return res.status(200).json({
+      code,
+      message: '',
+      data: {}
+    })
+  })
 })
 .put(cors.corsWithOptions, (req, res) => {
   return res.status(200).json({
