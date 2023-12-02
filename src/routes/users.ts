@@ -111,7 +111,7 @@ router.route('/login')
       j(100100)
     }
   }).then(() => {
-    usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+    return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {

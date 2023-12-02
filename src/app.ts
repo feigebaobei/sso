@@ -2,8 +2,9 @@ import * as createError from 'http-errors'
 import * as express from 'express'
 import * as path from 'path'
 import * as cookieParser from 'cookie-parser'
-import * as logger from 'morgan'
-// import fs from 'fs'
+// import * as logger from 'morgan'
+import morganBody from 'morgan-body'
+import fs from 'fs'
 // import * as fs from 'node:fs';
 // import * as rfs from 'rotating-file-stream'
 import scheduler from './schedule'
@@ -12,6 +13,7 @@ import type { Request, Response, Express, NextFunction } from "express";
 
 import indexRouter from './routes/index';
 import usersRouter from './routes/users';
+// import { A } from './types'
 
 var app: Express = express.default();
 
@@ -20,20 +22,6 @@ scheduler()
 app.set('views', path.join(__dirname, '../views'));
 app.set('view engine', 'jade');
 
-app.use(logger.default('dev'));
-// logger.token('reqBody', (req) => {
-//   return JSON.stringify(req.body)
-// })
-// logger.token('resBody', (_req, res) => {
-//   console.log('response', res, res.body)
-//   return JSON.stringify(res.body)
-// })
-// let accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), {flags: 'a'})
-// app.use(logger.default(':method :url :status :reqBody :resBody'));
-// app.use(logger.default('div', {stream: accessLogStream}))
-// app.use(logger.default('dev', {
-//   stream: fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' })
-// }))
 // var accessLogStream = rfs.createStream('access.log', {
 //   interval: '1d', // rotate daily
 //   path: path.join(__dirname, 'log')
@@ -41,6 +29,11 @@ app.use(logger.default('dev'));
 // app.use(logger.default('dev', {
 //   stream: accessLogStream
 // }))
+
+morganBody(app, {
+  noColors: true,
+  stream: fs.createWriteStream(path.join(__dirname, 'logs', 'access.log'), {flags: 'a'})
+})
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
