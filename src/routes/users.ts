@@ -44,7 +44,7 @@ router.route('/sign')
             data: {
               accessToken: tokenObj.accessToken,
               refreshToken: tokenObj.refreshToken,
-              id: _ulid,
+              ulid: _ulid,
               profile: {
                 email: req.body.account,
               },
@@ -104,6 +104,7 @@ router.route('/login')
   // 取不出user
   // 删除黑名单中的数据
   // 返回用户信息+token
+  clog('login')
   new Promise((s, j) => {
     if (rules.required(req.body.account) && rules.required(req.body.password)) {
       s(true)
@@ -111,13 +112,20 @@ router.route('/login')
       j(100100)
     }
   }).then(() => {
+    // return usersDb.collection('users', {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true
+    // }).findOne({'profile.email': req.body.account}).then(user => {
+      // clog('usersDb', usersDb)
     return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+      console.log(user, user)
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {
         return user
       }
-    }).catch(() => {
+    }).catch((error) => {
+      // clog('error08765', error)
       return Promise.reject(200010)
     })
   }).then((user: A) => {
@@ -129,7 +137,7 @@ router.route('/login')
       data: {
         accessToken: tokenObj.accessToken,
         refreshToken: tokenObj.refreshToken,
-        id: user.id,
+        ulid: user.id,
         profile: {
           email: user.profile.email,
         },
