@@ -10,3 +10,6 @@
 ```
 npm run dev
 ```
+
+# [产品文档](./docs/production.md)
+# [技术文档](./docs/technology.md)
