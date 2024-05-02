@@ -44,7 +44,7 @@ router.route('/sign')
             data: {
               accessToken: tokenObj.accessToken,
               refreshToken: tokenObj.refreshToken,
-              id: _ulid,
+              ulid: _ulid,
               profile: {
                 email: req.body.account,
               },
@@ -104,6 +104,7 @@ router.route('/login')
   // 取不出user
   // 删除黑名单中的数据
   // 返回用户信息+token
+  clog('login')
   new Promise((s, j) => {
     if (rules.required(req.body.account) && rules.required(req.body.password)) {
       s(true)
@@ -111,25 +112,33 @@ router.route('/login')
       j(100100)
     }
   }).then(() => {
+    // return usersDb.collection('users', {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true
+    // }).findOne({'profile.email': req.body.account}).then(user => {
+      // clog('usersDb', usersDb)
     return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+      console.log(user)
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {
         return user
       }
-    }).catch(() => {
+    }).catch((error) => {
+      clog('查询失败 error', error)
       return Promise.reject(200010)
     })
   }).then((user: A) => {
     usersDb.collection('black_list').deleteMany({userId: user.id})
     let tokenObj = createToken(user.id)
+    clog('then', tokenObj)
     return res.status(200).json({
       code: 0,
       message: '',
       data: {
         accessToken: tokenObj.accessToken,
         refreshToken: tokenObj.refreshToken,
-        id: user.id,
+        ulid: user.id,
         profile: {
           email: user.profile.email,
         },
@@ -139,6 +148,7 @@ router.route('/login')
       }
     })
   }).catch((code) => {
+    clog('error', code)
     return res.status(200).json({
       code,
       message: '',
@@ -308,8 +318,8 @@ router.route('/logout')
   // userId是否一致
   // 写入black_list
   new Promise((s, j) => {
-    if (rules.required(req.headers.authorization) && rules.required(req.headers.refreshtoken)) {
-      if (!Array.isArray(req.headers.authorization) && !Array.isArray(req.headers.refreshtoken)) {
+    if (rules.required(req.headers.authorization) && rules.required(req.headers.refreshToken)) {
+      if (!Array.isArray(req.headers.authorization) && !Array.isArray(req.headers.refreshToken)) {
         s(true)
       } else {
         j(100150)
@@ -319,7 +329,7 @@ router.route('/logout')
     }
   }).then(() => {
     let p1 = verifyAccessToken((req.headers.authorization as S) || '')
-    let p2 = verifyAccessToken((req.headers.refreshtoken as S) || '')
+    let p2 = verifyAccessToken((req.headers.refreshToken as S) || '')
     return Promise.all([p1, p2]).then(([r1, r2]) => {
       return [r1, r2]
     }).catch(() => {
@@ -353,7 +363,7 @@ router.route('/logout')
 })
 
 // 刷新token
-router.route('/refreshtoken')
+router.route('/refreshToken')
 .options(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
 })
@@ -378,18 +388,14 @@ router.route('/refreshtoken')
   // 返回刷新token
   let userId = ''
   new Promise((s, j) => {
-    if (rules.required(req.headers.accesstoken) && rules.required(req.headers.refreshtoken)) {
-      if (!Array.isArray(req.headers.accesstoken) && !Array.isArray(req.headers.refreshtoken)) {
-        s(true)
-      } else {
-        j(100150)
-      }
+    if (rules.required(req.body.accessToken) && rules.required(req.body.refreshToken)) {
+      s(true)
     } else {
-      j(100140)
+      j(100100)
     }
   }).then(() => {
-    let p1 = verifyAccessToken(req.headers.accesstoken as S)
-    let p2 = verifyAccessToken(req.headers.refreshtoken as S)
+    let p1 = verifyAccessToken(req.body.accessToken as S)
+    let p2 = verifyAccessToken(req.body.refreshToken as S)
     return Promise.all([p1, p2]).then(([r1, r2]) => {
       if (r1.userId === r2.userId) {
         if (new Date().getTime() < r2.expires) {
@@ -401,8 +407,6 @@ router.route('/refreshtoken')
       } else {
         return Promise.reject(100110)
       }
-    }).catch(() => {
-      return Promise.reject(100140)
     })
   }).then(() => {
     // 是否登出
@@ -413,14 +417,13 @@ router.route('/refreshtoken')
       return Promise.reject(200010)
     })
   }).then((record) => {
-    clog('seur', record)
+    // clog('user', record)
     if (record) {
       return Promise.reject(100130)
     } else {
       return true
     }
   }).then(() => {
-    // clog('suerdi', )
     return res.status(200).json({
       code: 0,
       message: '',

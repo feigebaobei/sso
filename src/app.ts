@@ -32,6 +32,7 @@ app.set('view engine', 'jade');
 
 morganBody(app, {
   noColors: true,
+  logRequestId:  true,
   stream: fs.createWriteStream(path.join(__dirname, 'logs', 'access.log'), {flags: 'a'})
 })
 
@@ -61,3 +62,8 @@ app.use(function(err: any, req: Request, res: Response, next: NextFunction) {
 
 // module.exports = app;
 export default app
+
+
+process.on('uncaughtException', function (err) {
+  console.log(err);
+}); 
