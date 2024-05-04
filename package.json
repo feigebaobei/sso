@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "start2": "ts-node src/index.ts",
+    "s": "node src/start.ts",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\""
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "mongodb": "^6.3.0",
     "morgan": "~1.9.1",
     "node-schedule": "^2.1.1",
+    "pino": "^9.0.0",
     "rotating-file-stream": "^3.1.1",
     "ts-node": "^10.9.1",
     "ulid": "^2.3.0"

@@ -118,20 +118,17 @@ router.route('/login')
     // }).findOne({'profile.email': req.body.account}).then(user => {
       // clog('usersDb', usersDb)
     return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
-      console.log(user)
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {
         return user
       }
     }).catch((error) => {
-      clog('查询失败 error', error)
       return Promise.reject(200010)
     })
   }).then((user: A) => {
     usersDb.collection('black_list').deleteMany({userId: user.id})
     let tokenObj = createToken(user.id)
-    clog('then', tokenObj)
     return res.status(200).json({
       code: 0,
       message: '',
@@ -148,7 +145,6 @@ router.route('/login')
       }
     })
   }).catch((code) => {
-    clog('error', code)
     return res.status(200).json({
       code,
       message: '',
