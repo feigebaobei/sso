@@ -112,11 +112,6 @@ router.route('/login')
       j(100100)
     }
   }).then(() => {
-    // return usersDb.collection('users', {
-    //   useNewUrlParser: true,
-    //   useUnifiedTopology: true
-    // }).findOne({'profile.email': req.body.account}).then(user => {
-      // clog('usersDb', usersDb)
     return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
@@ -441,6 +436,58 @@ router.route('/refreshToken')
   })
 })
 
+router.route('/saml')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.post(cors.corsWithOptions, (req, res) => {
+  // res.sendStatus(200)
+  // 检查参数
+  // 生成saml
+  // 返回值
+  return new Promise((s, j) => {
+    if (rules.required(req.body.account) && rules.required(req.body.password)) {
+      s(true)
+    } else {
+      j(100100)
+    }
+  }).then(() => {
+    return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+      if (!user || md5(req.body.password) !== user.profile.passwordHash) {
+        return Promise.reject(100110)
+      } else {
+        return user
+      }
+    }).catch((error) => {
+      return Promise.reject(200010)
+    })
+  }).then((user: A) => {
+    // usersDb.collection('black_list').deleteMany({userId: user.id})
+    // let tokenObj = createToken(user.id)
+    return res.status(200).json({
+      code: 0,
+      message: '',
+      data: {
+        email: user.profile.email,
+      }
+    })
+  }).catch((code) => {
+    return res.status(200).json({
+      code,
+      message: errorCode[code],
+      data: {},
+    })
+  })
+})
+.put(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
 
 // 重置用户表
 // 开发时使用
