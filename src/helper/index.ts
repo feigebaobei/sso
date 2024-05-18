@@ -7,6 +7,7 @@ import { accessSecret,
     refreshTokenDuration,
     cryptoSecretBuffer,
     ivBuffer,
+    numberArr,
  } from '../helper/config'
 import type { Response } from 'express'
 import type { S, N, ULID } from '../types'
@@ -20,7 +21,7 @@ let rules = {
     required: (params: any) => {
         return params !== undefined && params !== null
     },
-    email: (str: string) => {
+    isEmail: (str: string) => {
         // 1234@qq.com
         let reg = /^.*@.*\.com/
         let r = reg.test(str) 
@@ -164,6 +165,21 @@ let isMatchedToken = (accessToken: S, refreshToken: S) => {
         return r1.userId === r2.userId
     })
 }
+let ceateRandom = (n: N) => {
+    return Math.floor(Math.random() * Math.pow(10, n))
+}
+let createVerifycationCode = (n: N) => {
+    // numberArr
+    let res = ''
+    let i = 0
+    let j : N
+    while (i < n) {
+        j = ceateRandom(1)
+        res += numberArr[j]
+        i++
+    }
+    return res
+}
 
 export {
     // required,
@@ -174,4 +190,6 @@ export {
     verifyAccessToken,
     verifyRefreshToken,
     isMatchedToken,
+    ceateRandom,
+    createVerifycationCode,
 }
