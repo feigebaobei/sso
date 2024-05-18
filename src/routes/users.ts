@@ -4,9 +4,10 @@ import md5 from 'md5'
 import {ulid} from 'ulid'
 import { usersDb } from '../mongodb'
 import { rules, resParamsError, createToken, verifyAccessToken,
-  isMatchedToken, } from '../helper'
-import { deletedDuration} from '../helper/config'
+  isMatchedToken, createVerifycationCode } from '../helper'
+import { deletedDuration, verificationExpiredTime} from '../helper/config'
 import { errorCode } from '../helper/errorCode'
+import { send } from '../helper/sendEmail'
 import type { UserDocument, A, S, N } from '../types'
 
 let clog = console.log
@@ -25,52 +26,66 @@ router.route('/sign')
   })
 })
 .post(cors.corsWithOptions, (req, res) => {
-  if (rules.required(req.body.account) && rules.required(req.body.password)) {
-    usersDb.collection('users').findOne({'profile.email': req.body.account}).then((user) => {
-      if (!user) {
-        let _ulid = ulid()
-        usersDb.collection('users').insertOne({
-          id: _ulid,
+  new Promise((s, j) => {
+    if (rules.required(req.body.email) && rules.required(req.body.password) &&
+    rules.required(req.body.verification)
+    ) {
+      s(true)
+    } else {
+      j(100100)
+    }
+  }).then(() => {
+    return usersDb.collection('users').findOne({'profile.email': req.body.email}).then((user) => {
+      if (user) {
+        return Promise.reject(100120)
+      } else {
+        return true
+      }
+    })
+  }).then(() => {
+    return usersDb.collection('verification_code').findOne({'email': req.body.email}).then((obj) => {
+      // clog('obj', obj)
+      if (obj?.code === req.body.verification) {
+        if (new Date().getTime() < obj?.expiredTime) {
+          return true
+        } else {
+          return Promise.reject(100164)
+        }
+      } else {
+        return Promise.reject(100160)
+      }
+    })
+  }).then(() => {
+    let _ulid = ulid()
+    return usersDb.collection('users').insertOne({
+      id: _ulid,
+      profile: {
+        email: req.body.email,
+        passwordHash: md5(req.body.password),
+      },
+      systems: [],
+    }).then(() => {
+      return res.status(200).json({
+        code: 0,
+        message: errorCode[0],
+        data: {
+          ulid: _ulid,
           profile: {
-            email: req.body.account,
-            passwordHash: md5(req.body.password),
+            email: req.body.email,
           },
           systems: [],
-        }).then(() => {
-          let tokenObj = createToken(_ulid)
-          return res.status(200).json({
-            code: 0,
-            message: errorCode[0],
-            data: {
-              accessToken: tokenObj.accessToken,
-              refreshToken: tokenObj.refreshToken,
-              ulid: _ulid,
-              profile: {
-                email: req.body.account,
-              },
-              systems: [],
-              roles: [],
-              routes: [],
-            }
-          })
-        }).catch((error) => {
-          return res.status(200).json({
-            code: 200000,
-            message: errorCode[200000],
-            data: error
-          })
-        })
-      } else {
-        return res.status(200).json({
-          code: 100120,
-          message: errorCode[100120],
-          data: {}
-        })
-      }      
+          roles: [],
+          routes: [],
+        }
+      })
     })
-  } else {
-    resParamsError(res)  
-  }
+  }).catch((code) => {
+    return res.status(200).json({
+      code,
+      message: errorCode[code],
+      data: {}
+    })
+  })
 })
 .put(cors.corsWithOptions, (req, res) => {
   return res.status(200).json({
@@ -106,13 +121,13 @@ router.route('/login')
   // 返回用户信息+token
   clog('login')
   new Promise((s, j) => {
-    if (rules.required(req.body.account) && rules.required(req.body.password)) {
+    if (rules.required(req.body.email) && rules.required(req.body.password)) {
       s(true)
     } else {
       j(100100)
     }
   }).then(() => {
-    return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+    return usersDb.collection('users').findOne({'profile.email': req.body.email}).then(user => {
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {
@@ -123,13 +138,13 @@ router.route('/login')
     })
   }).then((user: A) => {
     usersDb.collection('black_list').deleteMany({userId: user.id})
-    let tokenObj = createToken(user.id)
+    // let tokenObj = createToken(user.id)
     return res.status(200).json({
       code: 0,
       message: '',
       data: {
-        accessToken: tokenObj.accessToken,
-        refreshToken: tokenObj.refreshToken,
+        // accessToken: tokenObj.accessToken,
+        // refreshToken: tokenObj.refreshToken,
         ulid: user.id,
         profile: {
           email: user.profile.email,
@@ -354,6 +369,8 @@ router.route('/logout')
 })
 
 // 刷新token
+// 未来不计划再支持token方式登录了。
+// delete 20240701+
 router.route('/refreshToken')
 .options(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
@@ -449,13 +466,13 @@ router.route('/saml')
   // 生成saml
   // 返回值
   return new Promise((s, j) => {
-    if (rules.required(req.body.account) && rules.required(req.body.password)) {
+    if (rules.required(req.body.email) && rules.required(req.body.password)) {
       s(true)
     } else {
       j(100100)
     }
   }).then(() => {
-    return usersDb.collection('users').findOne({'profile.email': req.body.account}).then(user => {
+    return usersDb.collection('users').findOne({'profile.email': req.body.email}).then(user => {
       if (!user || md5(req.body.password) !== user.profile.passwordHash) {
         return Promise.reject(100110)
       } else {
@@ -471,7 +488,14 @@ router.route('/saml')
       code: 0,
       message: '',
       data: {
-        email: user.profile.email,
+        // email: user.profile.email,
+        ulid: user.id,
+        profile: {
+          email: user.profile.email,
+        },
+        systems: [],
+        roles: [],
+        routes: [],
       }
     })
   }).catch((code) => {
@@ -488,6 +512,71 @@ router.route('/saml')
 .delete(cors.corsWithOptions, (req, res) => {
   res.sendStatus(200)
 })
+
+// 验证码
+router.route('/verification')
+.options(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.get(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.post(cors.corsWithOptions, (req, res) => {
+  // 验证请求体
+  // 生成验证码
+  // 发送邮件
+  // 写入数据库表
+  // 返回值
+  let code: S = '100000'
+  new Promise((s, j) => {
+    if (rules.isEmail(req.body.email)) {
+      s(true)
+    } else {
+      j(100150)
+    }
+  }).then(() => {
+    code = createVerifycationCode(6)
+    // code = String()
+    return send({to: req.body.email, subject: '验证码', text: `为HeShiJade的验证码：${code}`}).then(() => {
+      return true
+    }).catch(() => {
+      return Promise.reject(400000)
+    })
+  }).then(() => {
+    return usersDb.collection('verification_code').updateOne({
+      email: req.body.email,
+    }, {
+      $set: {
+        email: req.body.email,
+        code,
+        expiredTime: new Date().getTime() + verificationExpiredTime,
+      }
+    }, {upsert: true}).then(() => {
+      return true
+    }).catch(() => {
+      return Promise.reject(200000)
+    })
+  }).then(() => {
+    res.status(200).json({
+      code: 0,
+      message: '',
+      data: {}
+    })
+  }).catch((code) => {
+    res.status(200).json({
+      code,
+      message: errorCode[code],
+      data: {}
+    })
+  })
+})
+.put(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+.delete(cors.corsWithOptions, (req, res) => {
+  res.sendStatus(200)
+})
+
 
 // 重置用户表
 // 开发时使用
