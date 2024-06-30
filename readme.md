@@ -18,3 +18,9 @@ npm run dev
 重构ts为js
 
 
+# aliyun部署流程
+1. 在功能分支上开发新功能。
+2. 在github上合并到master.
+3. 在aliyun上的相应目标拉取master分支代码。
+4. 执行`npx tsc`
+5. 执行`pm2 restart $xx`$xx是sso服务对应的id。
