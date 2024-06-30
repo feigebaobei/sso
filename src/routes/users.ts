@@ -8,6 +8,7 @@ import { rules, resParamsError, createToken, verifyAccessToken,
 import { deletedDuration, verificationExpiredTime} from '../helper/config'
 import { errorCode } from '../helper/errorCode'
 import { send } from '../helper/sendEmail'
+import { logger } from '../helper/log'
 import type { UserDocument, A, S, N } from '../types'
 
 let clog = console.log
@@ -105,6 +106,7 @@ router.route('/sign')
 // 登录
 router.route('/login')
 .options(cors.corsWithOptions, (req, res) => {
+  logger.info(req)
   res.sendStatus(200)
 })
 .get(cors.corsWithOptions, (req, res) => {
