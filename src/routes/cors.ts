@@ -7,7 +7,8 @@ import type { Request,
 // let clog = console.log
 
 var whiteList = ['http://localhost:4200', 'http://127.0.0.1:4200',
-'http://localhost:4210', 'http://127.0.0.1:4210'
+'http://localhost:4210', 'http://127.0.0.1:4210',
+'http://heshijade.com:4210', 'http://heshijade.com:4210',
 ]
 var corsOptionDelegate = (req: Request, cb: Function) => {
   var corsOptions
