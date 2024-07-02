@@ -16,6 +16,7 @@ yarn add cors dotenv jsonwebtoken md5 mongodb morgan node-schedule nodemailer pi
 yarn add jsonwebtoken crypto
 yarn add pino
 yarn add nodemailer
+yarn add cors
 
 
 
