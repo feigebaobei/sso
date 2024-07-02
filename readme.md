@@ -5,6 +5,21 @@
 - ndoe(express)
 - ts
 - yarn
+## 依赖
+```
+<!-- 根据项目真实引用的文件，安装依赖。 -->
+yarn add cors dotenv jsonwebtoken md5 mongodb morgan node-schedule nodemailer pino rotating-file-stream ts-node ulid
+
+
+
+
+yarn add jsonwebtoken crypto
+yarn add pino
+yarn add nodemailer
+
+
+
+```
 
 # 启动
 ```
