@@ -20,7 +20,7 @@ let send = (p) => {
         html: p.html,
     })
 }
-
-export {
+module.exports = {
+// export {
     send,
 }
