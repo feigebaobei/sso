@@ -27,8 +27,10 @@ var corsOptionDelegate = (req, cb) => {
   cb(null, corsOptions)
 }
 
-// module.exports = {
-export default {
-  cors: cors.default(),
-  corsWithOptions: cors.default(corsOptionDelegate)
+module.exports = {
+// export default {
+  // cors: cors.default(),
+  // corsWithOptions: cors.default(corsOptionDelegate)
+  cors: cors(),
+  corsWithOptions: cors(corsOptionDelegate)
 }

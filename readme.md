@@ -17,6 +17,10 @@ yarn add jsonwebtoken crypto
 yarn add pino
 yarn add nodemailer
 yarn add cors
+yarn add node-schedule
+yarn add mongodb
+yarn add md5
+yarn add ulid
 
 
 

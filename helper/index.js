@@ -13,7 +13,7 @@ const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { accessSecret, refreshSecret, accessTokenDuration,
     refreshTokenDuration,
-    cryptoSecretBuffer, ivBuffer, ivBuffer, numberArr,
+    cryptoSecretBuffer, ivBuffer, numberArr,
 } = require('../helper/config')
 
 //  var express = require('express');

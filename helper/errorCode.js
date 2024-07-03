@@ -17,7 +17,7 @@ let errorCode = {
     300000: '无对应数据',
     400000: '发送邮件失败',
 }
-
-export {
+module.exports = {
+// export {
     errorCode
 }
