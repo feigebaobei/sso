@@ -14,7 +14,7 @@ const crypto = require('crypto')
 const { accessSecret, refreshSecret, accessTokenDuration,
     refreshTokenDuration,
     cryptoSecretBuffer, ivBuffer, numberArr,
-} = require('../helper/config')
+} = require('./config')
 
 //  var express = require('express');
 // module.exports = router;

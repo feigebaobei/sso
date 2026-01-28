@@ -524,7 +524,7 @@ router.route('/verification')
   res.sendStatus(200)
 })
 .post(cors.corsWithOptions, (req, res) => {
-  // 验证请求体
+  // 验证请求体 {"email": "baobeifeige@gmail.com"}
   // 生成验证码
   // 发送邮件
   // 写入数据库表
