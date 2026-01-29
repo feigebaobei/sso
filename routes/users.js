@@ -27,6 +27,7 @@ router.route('/sign')
   })
 })
 .post(cors.corsWithOptions, (req, res) => {
+  let errorData = {}
   new Promise((s, j) => {
     if (rules.required(req.body.email) && rules.required(req.body.password) &&
     rules.required(req.body.verification)
@@ -38,7 +39,16 @@ router.route('/sign')
   }).then(() => {
     return usersDb.collection('users').findOne({'profile.email': req.body.email}).then((user) => {
       if (user) {
-        return Promise.reject(100120)
+        errorData = {
+          ulid: user.id,
+          profile: {
+            email: user.profile.email,
+          },
+          systems: user.systems,
+          roles: [],
+          routes: [],
+        }
+        return Promise.reject(100120) // 已经存在
       } else {
         return true
       }
@@ -84,7 +94,7 @@ router.route('/sign')
     return res.status(200).json({
       code,
       message: errorCode[code],
-      data: {}
+      data: errorData,
     })
   })
 })
