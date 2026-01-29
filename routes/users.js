@@ -159,7 +159,7 @@ router.route('/login')
   }).catch((code) => {
     return res.status(200).json({
       code,
-      message: '',
+      message: errorCode[code],
       data: {}
     })
   })
